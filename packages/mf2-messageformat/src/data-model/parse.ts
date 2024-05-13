@@ -35,7 +35,7 @@ const MissingSyntax = (pos: number, expected: string) =>
     'missing-syntax',
     pos,
     pos + expected.length,
-    expected
+    expected === '\u2069' ? 'PDI' : expected
   );
 const SyntaxError = (
   ...args: ConstructorParameters<typeof MessageSyntaxError>
@@ -225,6 +225,8 @@ function expression(allowMarkup: boolean): Model.Expression | Model.Markup;
 function expression(allowMarkup: boolean): Model.Expression | Model.Markup {
   const start = pos;
   pos += 1; // '{'
+  const isolated = atIsolationStart();
+  if (isolated) pos += 1;
   ws();
 
   const arg = value(false);
@@ -238,6 +240,7 @@ function expression(allowMarkup: boolean): Model.Expression | Model.Markup {
   let markup: Model.Markup | undefined;
   switch (sigil) {
     case '@':
+    case '\u2069':
     case '}':
       break;
     case ':': {
@@ -280,6 +283,7 @@ function expression(allowMarkup: boolean): Model.Expression | Model.Markup {
     markup.kind = 'standalone';
     pos += 1; // '/'
   }
+  if (isolated) expect('\u2069', true);
   expect('}', true);
 
   if (annotation) {
@@ -485,4 +489,9 @@ function ws(req: string | boolean = false): void {
   if (req && !length && (req === true || !req.includes(source[pos]))) {
     throw MissingSyntax(pos, "' '");
   }
+}
+
+function atIsolationStart(): boolean {
+  const next = source[pos];
+  return next === '\u2066' || next === '\u2067' || next === '\u2068';
 }
