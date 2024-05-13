@@ -184,21 +184,21 @@ function parseIdentifier(
 ): { parts: CST.Identifier; end: number } {
   const { source } = ctx;
   const str0 = parseNameValue(source, start);
-  if (!str0) {
+  if (!str0.value) {
     ctx.onError('empty-token', start, start + 1);
     return { parts: [{ start, end: start, value: '' }], end: start };
   }
   let pos = start + str0.length;
-  const id0 = { start, end: pos, value: str0 };
+  const id0 = { start, end: pos, value: str0.value };
   if (source[pos] !== ':') return { parts: [id0], end: pos };
 
   const sep = { start: pos, end: pos + 1, value: ':' as const };
   pos += 1;
 
   const str1 = parseNameValue(source, pos);
-  if (str1) {
+  if (str1.value) {
     const end = pos + str1.length;
-    const id1 = { start: pos, end, value: str1 };
+    const id1 = { start: pos, end, value: str1.value };
     return { parts: [id0, sep, id1], end };
   } else {
     ctx.onError('empty-token', pos, pos + 1);

@@ -61,12 +61,12 @@ export function parseLiteral(
   required: boolean
 ): CST.Literal | undefined {
   if (ctx.source[start] === '|') return parseQuotedLiteral(ctx, start);
-  const value = parseUnquotedLiteralValue(ctx.source, start);
+  const { value, length } = parseUnquotedLiteralValue(ctx.source, start);
   if (!value) {
     if (required) ctx.onError('empty-token', start, start);
     else return undefined;
   }
-  const end = start + value.length;
+  const end = start + length;
   return { type: 'literal', quoted: false, start, end, value };
 }
 
@@ -134,8 +134,8 @@ export function parseVariable(
 ): CST.VariableRef {
   const pos = start + 1;
   const open = { start, end: pos, value: '$' as const };
-  const name = parseNameValue(ctx.source, pos);
-  const end = pos + name.length;
+  const { value: name, length } = parseNameValue(ctx.source, pos);
+  const end = pos + length;
   if (!name) ctx.onError('empty-token', pos, pos + 1);
   return { type: 'variable', start, end, open, name };
 }

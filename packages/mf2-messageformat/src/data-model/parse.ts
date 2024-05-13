@@ -160,7 +160,8 @@ function pattern(reqQuoted: boolean): {
 function declarations(): Model.Declaration[] {
   const declarations: Model.Declaration[] = [];
   loop: while (source[pos] === '.') {
-    const keyword = parseNameValue(source, pos + 1);
+    const { value: keyword, length } = parseNameValue(source, pos + 1);
+    if (length !== keyword.length) throw SyntaxError('parse-error', pos);
     switch (keyword) {
       case 'input':
         declarations.push(inputDeclaration());
@@ -427,12 +428,12 @@ function literal(required: boolean): Model.Literal | undefined;
 function literal(required: boolean): Model.Literal | undefined {
   const ql = quotedLiteral();
   if (ql) return ql;
-  const value = parseUnquotedLiteralValue(source, pos);
+  const { value, length } = parseUnquotedLiteralValue(source, pos);
+  pos += length;
   if (!value) {
     if (required) throw SyntaxError('empty-token', pos);
     else return undefined;
   }
-  pos += value.length;
   return { type: 'literal', value };
 }
 
@@ -474,10 +475,10 @@ function identifier(): string {
 }
 
 function name(): string {
-  const name = parseNameValue(source, pos);
-  if (!name) throw SyntaxError('empty-token', pos);
-  pos += name.length;
-  return name;
+  const { value, length } = parseNameValue(source, pos);
+  pos += length;
+  if (!value) throw SyntaxError('empty-token', pos);
+  return value;
 }
 
 function ws(required?: boolean): void;

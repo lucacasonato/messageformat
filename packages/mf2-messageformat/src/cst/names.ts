@@ -28,11 +28,22 @@ const isNameCharCode = (cc: number) =>
 // This is sticky so that parsing doesn't need to substring the source
 const numberLiteral = /-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][-+]?\d+)?/y;
 
-export function parseNameValue(src: string, start: number): string {
-  if (!isNameStartCode(src.charCodeAt(start))) return '';
-  let pos = start + 1;
-  while (isNameCharCode(src.charCodeAt(pos))) pos += 1;
-  return src.substring(start, pos);
+export function parseNameValue(
+  src: string,
+  start: number
+): { value: string; length: number } {
+  let valueStart = start;
+  const cc0 = src.charCodeAt(start);
+  if (cc0 === 0x2066 || cc0 === 0x2067 || cc0 === 0x2068) valueStart += 1;
+  let pos = valueStart;
+  if (isNameStartCode(src.charCodeAt(pos))) {
+    pos += 1;
+    while (isNameCharCode(src.charCodeAt(pos))) pos += 1;
+  }
+  const value = src.substring(valueStart, pos);
+  let length = pos - start;
+  if (src.charCodeAt(pos) === 0x2069) length += 1;
+  return { value, length };
 }
 
 export function isValidUnquotedLiteral(str: string): boolean {
@@ -51,15 +62,10 @@ export function isValidUnquotedLiteral(str: string): boolean {
 export function parseUnquotedLiteralValue(
   source: string,
   start: number
-): string {
+): { value: string; length: number } {
   numberLiteral.lastIndex = start;
   const num = numberLiteral.exec(source);
-  if (num) return num[0];
-
-  let pos = start;
-  if (isNameStartCode(source.charCodeAt(pos))) {
-    pos += 1;
-    while (isNameCharCode(source.charCodeAt(pos))) pos += 1;
-  }
-  return source.substring(start, pos);
+  return num
+    ? { value: num[0], length: num[0].length }
+    : parseNameValue(source, start);
 }

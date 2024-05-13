@@ -14,19 +14,22 @@ export function parseDeclarations(ctx: ParseContext): {
   const declarations: CST.Declaration[] = [];
   loop: while (source[pos] === '.') {
     const keyword = parseNameValue(source, pos + 1);
+    if (keyword.length !== keyword.value.length) {
+      ctx.onError('parse-error', pos + 1, pos + 1 + keyword.length);
+    }
     let decl;
-    switch (keyword) {
+    switch (keyword.value) {
       case '':
       case 'match':
         break loop;
       case 'input':
-        decl = parseInputDeclaration(ctx, pos);
+        decl = parseInputDeclaration(ctx, pos, keyword);
         break;
       case 'local':
-        decl = parseLocalDeclaration(ctx, pos);
+        decl = parseLocalDeclaration(ctx, pos, keyword);
         break;
       default:
-        decl = parseReservedStatement(ctx, pos, '.' + keyword);
+        decl = parseReservedStatement(ctx, pos, keyword);
     }
     declarations.push(decl);
     pos = decl.end;
@@ -37,10 +40,11 @@ export function parseDeclarations(ctx: ParseContext): {
 
 function parseInputDeclaration(
   ctx: ParseContext,
-  start: number
+  start: number,
+  kw: { value: string; length: number }
 ): CST.InputDeclaration {
   //
-  let pos = start + 6; // '.input'
+  let pos = start + 1 + kw.length; // '.input'
   const keyword: CST.Syntax<'.input'> = { start, end: pos, value: '.input' };
   pos += whitespaces(ctx.source, pos);
 
@@ -56,11 +60,12 @@ function parseInputDeclaration(
 
 function parseLocalDeclaration(
   ctx: ParseContext,
-  start: number
+  start: number,
+  kw: { value: string; length: number }
 ): CST.LocalDeclaration {
   const { source } = ctx;
 
-  let pos = start + 6; // '.local'
+  let pos = start + 1 + kw.length; // '.local'
   const keyword: CST.Syntax<'.local'> = { start, end: pos, value: '.local' };
   const ws = whitespaces(source, pos);
   pos += ws;
@@ -110,9 +115,10 @@ function parseLocalDeclaration(
 function parseReservedStatement(
   ctx: ParseContext,
   start: number,
-  keyword: string
+  kw: { value: string; length: number }
 ): CST.ReservedStatement {
-  let pos = start + keyword.length;
+  const kwEnd = start + 1 + kw.length;
+  let pos = kwEnd;
   pos += whitespaces(ctx.source, pos);
 
   const body = parseReservedBody(ctx, pos);
@@ -133,7 +139,7 @@ function parseReservedStatement(
     type: 'reserved-statement',
     start,
     end,
-    keyword: { start, end: keyword.length, value: keyword },
+    keyword: { start, end: kwEnd, value: '.' + kw.value },
     body,
     values
   };
