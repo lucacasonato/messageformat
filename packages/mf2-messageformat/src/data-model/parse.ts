@@ -425,7 +425,8 @@ function value(
 function literal(required: true): Model.Literal;
 function literal(required: boolean): Model.Literal | undefined;
 function literal(required: boolean): Model.Literal | undefined {
-  if (source[pos] === '|') return quotedLiteral();
+  const ql = quotedLiteral();
+  if (ql) return ql;
   const value = parseUnquotedLiteralValue(source, pos);
   if (!value) {
     if (required) throw SyntaxError('empty-token', pos);
@@ -435,8 +436,11 @@ function literal(required: boolean): Model.Literal | undefined {
   return { type: 'literal', value };
 }
 
-function quotedLiteral(): Model.Literal {
-  pos += 1; // '|'
+function quotedLiteral(): Model.Literal | null {
+  const isolated = atIsolationStart();
+  const c0 = source[isolated ? pos + 1 : pos];
+  if (c0 !== '|') return null;
+  pos += isolated ? 2 : 1;
   let value = '';
   for (let i = pos; i < source.length; ++i) {
     switch (source[i]) {
@@ -453,6 +457,7 @@ function quotedLiteral(): Model.Literal {
       case '|':
         value += source.substring(pos, i);
         pos = i + 1;
+        if (isolated) expect('\u2069', true);
         return { type: 'literal', value };
     }
   }
