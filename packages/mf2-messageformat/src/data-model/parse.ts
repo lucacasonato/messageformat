@@ -71,15 +71,14 @@ export function parseMessage(
   const decl = declarations();
   if (source.startsWith('.match', pos)) return selectMessage(decl);
 
-  const quoted = decl.length > 0 || source.startsWith('{{', pos);
-  const pattern_ = pattern(quoted);
-  if (quoted) {
+  const p = pattern(decl.length > 0);
+  if (p.quoted) {
     ws();
     if (pos < source.length) {
       throw SyntaxError('extra-content', pos, source.length);
     }
   }
-  return { type: 'message', declarations: decl, pattern: pattern_ };
+  return { type: 'message', declarations: decl, pattern: p.pattern };
 }
 
 function selectMessage(declarations: Model.Declaration[]): Model.SelectMessage {
@@ -115,13 +114,23 @@ function variant(): Model.Variant {
       keys.push(literal(true));
     }
   }
-  return { keys, value: pattern(true) };
+  return { keys, value: pattern(true).pattern };
 }
 
-function pattern(quoted: boolean): Model.Pattern {
-  if (quoted) {
-    if (source.startsWith('{{', pos)) pos += 2;
-    else throw MissingSyntax(pos, '{{');
+function pattern(reqQuoted: boolean): {
+  pattern: Model.Pattern;
+  quoted: boolean;
+} {
+  let quoted: boolean;
+  const pq0 = /{[\u2066-\u2068]?{/y;
+  pq0.lastIndex = pos;
+  const quoteStart = pq0.exec(source);
+  if (quoteStart) {
+    pos += quoteStart[0].length;
+    quoted = true;
+  } else {
+    if (reqQuoted) throw MissingSyntax(pos, '{{');
+    quoted = false;
   }
 
   const pattern: Model.Pattern = [];
@@ -142,9 +151,10 @@ function pattern(quoted: boolean): Model.Pattern {
 
   if (quoted) {
     if (source.startsWith('}}', pos)) pos += 2;
+    else if (source.startsWith('}\u2069}', pos)) pos += 3;
     else throw MissingSyntax(pos, '}}');
   }
-  return pattern;
+  return { pattern, quoted };
 }
 
 function declarations(): Model.Declaration[] {
